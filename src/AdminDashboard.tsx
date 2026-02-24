@@ -92,6 +92,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Compress image before upload
+      const maxSize = 500 * 1024; // 500KB limit
+      if (file.size > maxSize) {
+        setMessage('⚠️ Image too large. Please use an image under 500KB');
+        setMessageType('error');
+        return;
+      }
       setImage(file);
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -129,7 +136,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
         }
       });
 
-      setMessage('✅ Product uploaded successfully! It will appear in your store shortly.');
+      setMessage('✅ Product uploaded successfully!');
       setMessageType('success');
       
       // Reset form
@@ -143,10 +150,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
       setImage(null);
       setImagePreview('');
 
-      // Refresh page after 2 seconds to show new product
+      // Refresh products list without page reload
       setTimeout(() => {
-        window.location.reload();
-      }, 2000);
+        fetchProducts();
+      }, 1000);
     } catch (error: any) {
       setMessage(error.response?.data?.message || 'Failed to upload product');
       setMessageType('error');

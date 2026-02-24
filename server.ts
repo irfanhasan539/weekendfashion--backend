@@ -60,7 +60,18 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ storage });
+const upload = multer({ 
+  storage,
+  limits: { fileSize: 500 * 1024 }, // 500KB limit
+  fileFilter: (req, file, cb) => {
+    const allowedMimes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files (JPEG, PNG, WebP, GIF) are allowed'));
+    }
+  }
+});
 
 // Verify Firebase Token Middleware
 const verifyToken = async (req: any, res: any, next: any) => {
@@ -93,7 +104,7 @@ app.post('/api/products/upload', verifyToken, upload.single('file'), async (req:
     const { name, price, category, tag, description } = req.body;
     const imagePath = `/images/${req.file.filename}`;
 
-    console.log('📝 Uploading product:', { name, price, category, tag });
+    console.log('📝 Uploading product:', { name, price, category, tag, fileSize: `${(req.file.size / 1024).toFixed(2)}KB` });
 
     // Create product object
     const productData = {
@@ -119,6 +130,9 @@ app.post('/api/products/upload', verifyToken, upload.single('file'), async (req:
     });
   } catch (error: any) {
     console.error('❌ Upload error:', error);
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).json({ message: 'File too large. Maximum size is 500KB' });
+    }
     res.status(500).json({ message: 'Failed to upload product', error: error.message });
   }
 });
