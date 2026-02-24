@@ -33,19 +33,20 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
 
   const tags = ['NEW ARRIVAL', 'BESTSELLER', 'CLEARANCE', 'LIMITED EDITION'];
 
+  // Fetch products function
+  const fetchProducts = async () => {
+    try {
+      const response = await axios.get('https://weekendfashion-backend.onrender.com/api/products');
+      setProducts(response.data);
+    } catch (error) {
+      console.error('Failed to fetch products:', error);
+    } finally {
+      setFetchingProducts(false);
+    }
+  };
+
   // Fetch products on mount
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const response = await axios.get('https://weekendfashion-backend.onrender.com/api/products');
-        setProducts(response.data);
-      } catch (error) {
-        console.error('Failed to fetch products:', error);
-      } finally {
-        setFetchingProducts(false);
-      }
-    };
-
     fetchProducts();
   }, []);
 
