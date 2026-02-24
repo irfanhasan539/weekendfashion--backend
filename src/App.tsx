@@ -49,72 +49,6 @@ const ICON_CATEGORIES = [
   { name: "SHOES", icon: Footprints },
 ];
 
-const PRODUCTS = [
-  {
-    id: 1,
-    name: "CARGO PARACHUTE SKIRT // BLACK",
-    price: 1500,
-    image: "https://picsum.photos/seed/product1/600/800",
-    tag: "NEW ARRIVAL",
-    category: "SHIRTS",
-    description: "A black cargo parachute skirt with utility pockets and relaxed fit."
-  },
-  {
-    id: 2,
-    name: "VOLCANO // FULL SLEEVE T-SHIRT",
-    price: 1400,
-    image: "https://picsum.photos/seed/product2/600/800",
-    tag: "BESTSELLER",
-    category: "TSHIRTS",
-    description: "Full sleeve Volcano tee featuring bold circular print."
-  },
-  {
-    id: 3,
-    name: "GRAPHITE // FULL SLEEVE T-SHIRT",
-    price: 1400,
-    image: "https://picsum.photos/seed/product3/600/800",
-    tag: "NEW ARRIVAL",
-    category: "TSHIRTS",
-    description: "Graphite full sleeve tee in a premium cotton blend."
-  },
-  {
-    id: 4,
-    name: "OXIDIZED RELAXED RIVET DENIM // BLACK",
-    price: 2750,
-    image: "https://picsum.photos/seed/product4/600/800",
-    tag: "BESTSELLER",
-    category: "BOTTOMS",
-    description: "Relaxed rivet denim with oxidized black finish."
-  },
-  {
-    id: 5,
-    name: "TECH MESSENGER BAG // NOIR",
-    price: 3200,
-    image: "https://picsum.photos/seed/product5/600/800",
-    tag: "NEW ARRIVAL",
-    category: "BAGS",
-    description: "Tech messenger bag with multiple compartments and zippers."
-  },
-  {
-    id: 6,
-    name: "URBAN SLING POUCH // CHARCOAL",
-    price: 1200,
-    image: "https://picsum.photos/seed/product6/600/800",
-    tag: "NEW ARRIVAL",
-    category: "ACCESSORIES",
-    description: "Compact sling pouch for daily essentials."
-  },
-  {
-    id: 7,
-    name: "CLASSIC RUNNER // SNEAKERS",
-    price: 2200,
-    image: "https://picsum.photos/seed/product7/600/800",
-    tag: "NEW ARRIVAL",
-    category: "SHOES",
-    description: "Classic runner sneakers with comfortable cushioning."
-  }
-];
-
 // --- Components ---
 
 const Ticker = () => (
@@ -443,7 +377,7 @@ export default function App() {
   const [selectedProduct, setSelectedProduct] = useState<any|null>(null);
   const [adminMode, setAdminMode] = useState<'home' | 'login' | 'dashboard'>('home');
   const [adminUser, setAdminUser] = useState<any>(null);
-  const [products, setProducts] = useState<any[]>(PRODUCTS);
+  const [products, setProducts] = useState<any[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
 
   // Fetch products from backend
@@ -451,7 +385,8 @@ export default function App() {
     const fetchProducts = async () => {
       setLoadingProducts(true);
       try {
-        const response = await fetch('http://localhost:5000/api/products');
+        const apiUrl = process.env.VITE_API_URL || 'https://weekendfashion-backend.onrender.com/api';
+        const response = await fetch(`${apiUrl}/products`);
         if (response.ok) {
           const backendProducts = await response.json();
           // Only use backend products - no mock data mixing
@@ -462,16 +397,18 @@ export default function App() {
             category: p.category,
             tag: p.tag || 'NEW ARRIVAL',
             description: p.description,
-            image: `http://localhost:3000${p.image_path}` // Use uploaded image path
+            image: p.image_path.startsWith('http') 
+              ? p.image_path 
+              : `https://weekendfashion-backend.onrender.com${p.image_path}`
           }));
           setProducts(formattedProducts);
         } else {
-          // If backend fails, use mock products
-          setProducts(PRODUCTS);
+          console.error('Failed to fetch products');
+          setProducts([]);
         }
       } catch (error) {
-        console.log('Backend not available, using mock data');
-        setProducts(PRODUCTS);
+        console.error('Backend not available:', error);
+        setProducts([]);
       } finally {
         setLoadingProducts(false);
       }
@@ -528,12 +465,14 @@ export default function App() {
         <ProductSection activeFilter={activeFilter} onProductClick={setSelectedProduct} products={products} />
         
         {/* Secondary Banner */}
-        <section className="h-[50vh] md:h-[70vh] relative overflow-hidden">
+        <section className="h-[50vh] md:h-[70vh] relative overflow-hidden bg-gray-900">
           <img 
-            src="https://picsum.photos/seed/banner/1920/1080" 
+            src="/images/landingpage.jpg" 
             alt="Banner" 
             className="w-full h-full object-cover"
-            referrerPolicy="no-referrer"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = 'none';
+            }}
           />
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
             <div className="text-center text-white px-4">

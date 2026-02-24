@@ -37,7 +37,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/products');
+        const response = await axios.get('https://weekendfashion-backend.onrender.com/api/products');
         setProducts(response.data);
       } catch (error) {
         console.error('Failed to fetch products:', error);
@@ -61,7 +61,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
       const token = await user.getIdToken();
       console.log('✅ Token obtained');
       
-      const response = await axios.delete(`http://localhost:5000/api/products/${productId}`, {
+      const response = await axios.delete(`https://weekendfashion-backend.onrender.com/api/products/${productId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -122,7 +122,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
       formDataToSend.append('tag', formData.tag);
       formDataToSend.append('description', formData.description);
 
-      const response = await axios.post('http://localhost:5000/api/products/upload', formDataToSend, {
+      const response = await axios.post('https://weekendfashion-backend.onrender.com/api/products/upload', formDataToSend, {
         headers: {
           'Content-Type': 'multipart/form-data',
           'Authorization': `Bearer ${await user.getIdToken()}`
