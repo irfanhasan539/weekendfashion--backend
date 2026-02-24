@@ -1,0 +1,21 @@
+{
+  "rules": {
+    "products": {
+      ".read": true,
+      ".write": false,
+      ".indexOn": ["category", "tag", "created_at"],
+      "$productId": {
+        ".read": true,
+        ".write": "root.child('admins').child(auth.uid).exists()"
+      }
+    },
+    "admins": {
+      ".read": false,
+      ".write": false,
+      "$uid": {
+        ".read": "auth.uid === $uid",
+        ".write": false
+      }
+    }
+  }
+}
