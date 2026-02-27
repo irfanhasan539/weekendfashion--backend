@@ -385,10 +385,15 @@ export default function App() {
     const fetchProducts = async () => {
       setLoadingProducts(true);
       try {
-        const apiUrl = process.env.VITE_API_URL || 'https://weekendfashion-backend.onrender.com/api';
+        // prefer explicit env var, otherwise use localhost during dev or production URL
+        const defaultApi = window.location.hostname === 'localhost'
+          ? 'http://localhost:5000/api'
+          : 'https://weekendfashion-backend.onrender.com/api';
+        const apiUrl = process.env.VITE_API_URL || defaultApi;
         const response = await fetch(`${apiUrl}/products`);
         if (response.ok) {
           const backendProducts = await response.json();
+          console.log('Fetched products from', apiUrl, backendProducts);
           // Only use backend products - no mock data mixing
           const formattedProducts = backendProducts.map((p: any) => ({
             id: p.id,
@@ -397,9 +402,9 @@ export default function App() {
             category: p.category,
             tag: p.tag || 'NEW ARRIVAL',
             description: p.description,
-            image: p.image_path.startsWith('http') 
-              ? p.image_path 
-              : `https://weekendfashion-backend.onrender.com${p.image_path}`
+            image: p.image_path.startsWith('http')
+              ? p.image_path
+              : `${apiUrl.replace(/\/api$/, '')}${p.image_path}`
           }));
           setProducts(formattedProducts);
         } else {

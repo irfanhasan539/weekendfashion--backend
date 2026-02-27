@@ -10,6 +10,7 @@ interface AdminDashboardProps {
 }
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
+  const API_BASE = process.env.VITE_API_URL || 'http://localhost:5000/api';
   const [formData, setFormData] = useState({
     name: '',
     price: '',
@@ -115,6 +116,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
     if (!image) {
       setMessage('Please select an image');
       setMessageType('error');
+      setTimeout(() => setMessage(''), 4000);
       return;
     }
 
@@ -130,15 +132,23 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
       formDataToSend.append('tag', formData.tag);
       formDataToSend.append('description', formData.description);
 
-      const response = await axios.post('https://weekendfashion-backend.onrender.com/api/products/upload', formDataToSend, {
+      // Create a timeout promise
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Upload timeout - server taking too long')), 30000)
+      );
+
+      const uploadPromise = axios.post(`${API_BASE}/products/upload`, formDataToSend, {
         headers: {
           'Content-Type': 'multipart/form-data',
           'Authorization': `Bearer ${await user.getIdToken()}`
         }
       });
 
+      await Promise.race([uploadPromise, timeoutPromise]);
+
       setMessage('✅ Product uploaded successfully!');
       setMessageType('success');
+      setTimeout(() => setMessage(''), 4000);
       
       // Reset form
       setFormData({
@@ -151,13 +161,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
       setImage(null);
       setImagePreview('');
 
-      // Refresh products list without page reload
+      // Refresh products list
       setTimeout(() => {
         fetchProducts();
-      }, 1000);
+      }, 500);
     } catch (error: any) {
-      setMessage(error.response?.data?.message || 'Failed to upload product');
+      console.error('Upload error:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to upload product';
+      setMessage(errorMessage);
       setMessageType('error');
+      setTimeout(() => setMessage(''), 5000);
     } finally {
       setLoading(false);
     }
@@ -381,9 +394,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
               {products.map((product) => (
                 <div key={product.id} className="border border-gray-300 rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow">
                   {/* Image */}
-                  <div className="aspect-[3/4] bg-gray-100 overflow-hidden">
+                    <div className="aspect-[3/4] bg-gray-100 overflow-hidden">
                     <img 
-                      src={`http://localhost:3000${product.image_path}`} 
+                      src={product.image_path && product.image_path.startsWith('http') ? product.image_path : `https://weekendfashion-backend.onrender.com${product.image_path}`} 
                       alt={product.name}
                       className="w-full h-full object-cover"
                       onError={(e) => {

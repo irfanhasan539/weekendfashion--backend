@@ -4,6 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import dotenv from 'dotenv';
 import admin from 'firebase-admin';
+import { v2 as cloudinary } from 'cloudinary';
 
 // Load environment variables
 dotenv.config({ path: '.env' });
@@ -30,6 +31,18 @@ if (!admin.apps.length) {
 }
 
 const db = admin.database();
+
+// Configure Cloudinary (optional - requires env vars)
+if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+  });
+  console.log('🔁 Cloudinary configured');
+} else {
+  console.log('⚠️ Cloudinary not configured. Falling back to local storage.');
+}
 
 // Middleware
 app.use(express.json());
@@ -102,12 +115,32 @@ app.post('/api/products/upload', verifyToken, upload.single('file'), async (req:
     }
 
     const { name, price, category, tag, description } = req.body;
-    const imagePath = `/images/${req.file.filename}`;
+    let imagePath = `/images/${req.file.filename}`;
+    let imagePublicId: string | null = null;
+
+    // If Cloudinary is configured, upload the saved file to Cloudinary and remove local file
+    if (cloudinary.config().cloud_name) {
+      try {
+        const uploadResult = await cloudinary.uploader.upload(req.file.path, {
+          folder: 'weekend-shopping'
+        });
+        imagePath = uploadResult.secure_url;
+        imagePublicId = uploadResult.public_id;
+
+        // Remove local file after successful upload
+        if (fs.existsSync(req.file.path)) {
+          fs.unlinkSync(req.file.path);
+        }
+        console.log('✅ Uploaded to Cloudinary:', imagePath);
+      } catch (cloudErr) {
+        console.error('❌ Cloudinary upload failed, keeping local file:', cloudErr);
+      }
+    }
 
     console.log('📝 Uploading product:', { name, price, category, tag, fileSize: `${(req.file.size / 1024).toFixed(2)}KB` });
 
     // Create product object
-    const productData = {
+    const productData: any = {
       id: Date.now().toString(),
       name,
       price: parseInt(price),
@@ -115,6 +148,7 @@ app.post('/api/products/upload', verifyToken, upload.single('file'), async (req:
       tag,
       description,
       image_path: imagePath,
+      image_public_id: imagePublicId,
       created_at: new Date().toISOString()
     };
 
@@ -172,20 +206,32 @@ app.delete('/api/products/:id', verifyToken, async (req: any, res: any) => {
       return res.status(404).json({ message: 'Product not found' });
     }
 
+
     const product = snapshot.val();
-    const imageFilePath = path.join(process.cwd(), 'public', product.image_path);
 
-    console.log('🖼️ Image path:', imageFilePath);
-    console.log('📁 File exists:', fs.existsSync(imageFilePath));
-
-    // Delete the product from Firebase
+    // Delete from Firebase
     await db.ref(`products/${id}`).remove();
     console.log('✅ Product deleted from Firebase Realtime DB');
 
-    // Delete the image file if it exists
-    if (fs.existsSync(imageFilePath)) {
-      fs.unlinkSync(imageFilePath);
-      console.log('✅ Image file deleted from public/images/');
+    // If product has a Cloudinary public id, delete from Cloudinary
+    if (product.image_public_id) {
+      try {
+        const destroyRes = await cloudinary.uploader.destroy(product.image_public_id);
+        console.log('✅ Cloudinary destroy response:', destroyRes);
+      } catch (cloudDelErr) {
+        console.error('❌ Failed to delete image from Cloudinary:', cloudDelErr);
+      }
+    } else if (product.image_path) {
+      // Fallback: if image_path is a local file, delete it
+      const imageFilePath = path.join(process.cwd(), 'public', product.image_path);
+      if (fs.existsSync(imageFilePath)) {
+        try {
+          fs.unlinkSync(imageFilePath);
+          console.log('✅ Image file deleted from public/images/');
+        } catch (fsErr) {
+          console.error('❌ Failed to delete local image file:', fsErr);
+        }
+      }
     }
 
     res.status(200).json({
